@@ -30,7 +30,7 @@ var budgetModel = (function() {
             inc: 0
         },
         budget: 0,
-        percentage = -1
+        percentage: -1
     };
     
     return {
@@ -54,15 +54,38 @@ var budgetModel = (function() {
             return newItem; 
         },
         
+        deleteItem: function(type, id) {
+            var ids, index; 
+           
+            ids = data.allItems[type].map(function(current) {
+                return current.id;
+            });
+
+            index = ids.indexOf(id); 
+          
+            if (index !== -1) {
+                data.allItems[type].splice(index, 1); 
+            }
+        },
+        
         calculateBudget: function(type) {
             calculateTotal(type); 
             data.budget = data.totals.inc - data.totals.exp; 
-            data.percentage = Math.round(data.totals.exp / data.totals.inc) * 100;
+            if (data.totals.inc > 0) {
+                data.percentage = Math.round(data.totals.exp / data.totals.inc * 100);
+            } else {
+                data.percentage = -1; 
+            }
         
         },
         
         getBudget: function() {
-            return data.budget; 
+            return {
+                budget:     data.budget,
+                totalInc:   data.totals.inc,
+                totalExp:   data.totals.exp,
+                percentage: data.percentage
+            }
         },
         
         testing: function() {
@@ -83,7 +106,13 @@ var budgetView = (function() {
         inputValue: '.add__value',
         inputBtn: '.add__btn',
         incomeContainer: '.income__list',
-        expensesContainer: '.expenses__list'
+        expensesContainer: '.expenses__list',
+        budgetLabel: '.budget__value', 
+        incomeLabel: '.budget__income--value',
+        expensesLabel: '.budget__expenses--value',
+        percentageLabel: '.budget__expenses--percentage',
+        container: '.container'
+        
     };
     
     
@@ -92,8 +121,8 @@ var budgetView = (function() {
             //+ inc or - exp
             return {
                 type:         document.querySelector(DOMstrings.inputType).value,
-                description:  document.querySelector(DOMstrings.inputDescription).value,
-                value:        parseFloat(document.querySelector(DOMstrings.inputValue).value)
+                description: document.querySelector(DOMstrings.inputDescription).value,
+                value:       parseFloat(document.querySelector(DOMstrings.inputValue).value)
             };
         },
                 
@@ -120,6 +149,10 @@ var budgetView = (function() {
             
         },
         
+        deleteListItem: function() {
+            
+        },
+        
         clearFields: function() {
             var fields, fieldsArr;
             
@@ -132,6 +165,17 @@ var budgetView = (function() {
             });
             
             fieldsArr[0].focus(); 
+        },
+        
+        displayBudget: function(obj) {
+            document.querySelector(DOMstrings.budgetLabel).textContent = obj.budget;  
+            document.querySelector(DOMstrings.incomeLabel).textContent = obj.totalInc;  
+            document.querySelector(DOMstrings.expensesLabel).textContent = obj.totalExp;  
+            if (obj.percentage > 0) { 
+                document.querySelector(DOMstrings.percentageLabel).textContent = obj.percentage + '%';
+            } else {
+                document.querySelector(DOMstrings.percentageLabel).textContent = '--';
+            }
         }
     };
 })(); 
@@ -149,13 +193,15 @@ var budgetController = (function(budgetMod, budgetVw) {
             ctrlAddItem();    
             }
      
-        }); 
+        });
+        
+        document.querySelector(DOMstrings.container).addEventListener('click', ctrlDeleteItem);
     
     };
     
     var updateBudget = function() {
-        
-        
+        var budget = budgetMod.getBudget();
+        budgetView.displayBudget(budget); 
     };
     
     var ctrlAddItem = function() {
@@ -165,15 +211,34 @@ var budgetController = (function(budgetMod, budgetVw) {
             var newItem = budgetMod.addItem(input.type, input.description, input.value);
             budgetVw.addListItem(newItem, input.type);
             budgetVw.clearFields(); 
-            budgetMod.calculateBudget(input.type); 
+            budgetMod.calculateBudget(input.type);
+            updateBudget(); 
         }
         
     };
+    
+    var ctrlDeleteItem = function(e) {
+        var itemID, splitID, type, ID;
+        
+        itemID = e.target.parentNode.parentNode.parentNode.parentNode.id;
+        
+        if (itemID) {
+            splitID = itemID.split('-');
+            type = splitID[0].substr(0, 3);
+            ID = parseInt(splitID[1]);
+            budgetMod.deleteItem(type, ID); 
+        }
+    }
     
     return {
         init: function() {
             console.log('Application has started'); 
             setupEventListeners(); 
+            updateBudget();  
+        },
+        
+        testing: function() {
+            return 
         }
     };
     
