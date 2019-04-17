@@ -12,7 +12,14 @@ var budgetModel = (function() {
         this.value = value; 
     };
     
-
+    var calculateTotal = function(type) {
+        var sum = 0; 
+        data.allItems[type].forEach(function(cur) {
+            sum += cur.value; 
+        });
+        data.totals[type] = sum; 
+    };
+    
     var data = {
         allItems: {
             exp: [],
@@ -21,7 +28,9 @@ var budgetModel = (function() {
         totals: {
             exp: 0,
             inc: 0
-        }
+        },
+        budget: 0,
+        percentage = -1
     };
     
     return {
@@ -43,6 +52,17 @@ var budgetModel = (function() {
             
             itemArr.push(newItem); 
             return newItem; 
+        },
+        
+        calculateBudget: function(type) {
+            calculateTotal(type); 
+            data.budget = data.totals.inc - data.totals.exp; 
+            data.percentage = Math.round(data.totals.exp / data.totals.inc) * 100;
+        
+        },
+        
+        getBudget: function() {
+            return data.budget; 
         },
         
         testing: function() {
@@ -145,7 +165,9 @@ var budgetController = (function(budgetMod, budgetVw) {
             var newItem = budgetMod.addItem(input.type, input.description, input.value);
             budgetVw.addListItem(newItem, input.type);
             budgetVw.clearFields(); 
+            budgetMod.calculateBudget(input.type); 
         }
+        
     };
     
     return {
