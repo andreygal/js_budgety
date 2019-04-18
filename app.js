@@ -135,10 +135,34 @@ var budgetView = (function() {
         incomeLabel: '.budget__income--value',
         expensesLabel: '.budget__expenses--value',
         percentageLabel: '.budget__expenses--percentage',
-        container: '.container'
+        container: '.container',
+        expensesPerLabel: '.item__percentage',
+        dateLabel: '.budget__title--month'
         
     };
     
+     var formatNumber = function(num, type) {
+            var numSplit, int, dec, sign; 
+            num = (Math.abs(num)).toFixed(2); 
+            numSplit = num.split('.');
+        
+            int = numSplit[0];
+            if (int.length > 3) {
+                int = int.substr(0, int.length - 3) + ',' + int.substr((int.length - 3), 3); 
+            }
+            
+            dec = numSplit[1]; 
+            
+            type === 'exp' ? sign = '-' : sign = '+';
+            
+            return sign + ' ' + int + '.' + dec;
+    };
+    
+    var nodeListForEach = function(list, callback) {
+        for (var i = 0; i < list.length; i++) {
+                callback(list[i], i); 
+        }
+    };
     
     return { 
         getInput: function() {
@@ -162,12 +186,16 @@ var budgetView = (function() {
                 html = '<div class="item clearfix" id="income-%id%"> <div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
             } else {
                 element = DOMstrings.expensesContainer; 
-                html = '<div class="item clearfix" id="expense-%id%"> <div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
+                html = '<div class="item clearfix" id="expense-%id%"> <div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__percentage">%percentage%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
             }
             
             newHtml = html.replace('%id%', obj.id);
             newHtml = newHtml.replace('%description%', obj.description);
-            newHtml = newHtml.replace('%value%', obj.value);
+            newHtml = newHtml.replace('%value%', formatNumber(obj.value, type));
+            
+            if (type === 'exp') {
+                newHtml = newHtml.replace('%percentage%', obj.percentage);
+            }
             
             document.querySelector(element).insertAdjacentHTML('beforeend', newHtml);
             
@@ -193,15 +221,53 @@ var budgetView = (function() {
         },
         
         displayBudget: function(obj) {
-            document.querySelector(DOMstrings.budgetLabel).textContent = obj.budget;  
-            document.querySelector(DOMstrings.incomeLabel).textContent = obj.totalInc;  
-            document.querySelector(DOMstrings.expensesLabel).textContent = obj.totalExp;  
+            document.querySelector(DOMstrings.budgetLabel).textContent = formatNumber(obj.budget, 'inc');  
+            document.querySelector(DOMstrings.incomeLabel).textContent = formatNumber(obj.totalInc, 'inc');  
+            document.querySelector(DOMstrings.expensesLabel).textContent = formatNumber(obj.totalExp, 'exp');  
             if (obj.percentage > 0) { 
                 document.querySelector(DOMstrings.percentageLabel).textContent = obj.percentage + '%';
             } else {
                 document.querySelector(DOMstrings.percentageLabel).textContent = '--';
             }
+        },
+        
+        displayPercentages: function(percentages) {
+            
+            var fields = document.querySelectorAll(DOMstrings.expensesPerLabel);
+            
+         
+            
+            nodeListForEach(fields, function(current, index) {
+                if (percentages[index] > 0) {
+                    current.textContent = percentages[index] + '%';
+                } else {
+                    current.textContent = '__'; 
+                }
+            });
+        },
+        
+        displayMonth: function() {
+            var now, date, dateArr; 
+            now = new Date(); 
+            dateArr = (now.toDateString()).split(' ');
+            date = dateArr[1] + ' ' + dateArr[3];
+            document.querySelector(DOMstrings.dateLabel).textContent = date; 
+        },
+        
+        changedType: function() {
+            
+            var fields = document.querySelectorAll(
+                DOMstrings.inputType + ',' +
+                DOMstrings.inputDescription + ',' +
+                DOMstrings.inputValue); 
+            
+            nodeListForEach(fields, function(cur) {
+                cur.classList.toggle('red-focus');
+            });
+            
+            document.querySelector(DOMstrings.inputBtn).classList.toggle('red'); 
         }
+        
     };
 })(); 
 
@@ -221,6 +287,8 @@ var budgetController = (function(budgetMod, budgetVw) {
         });
         
         document.querySelector(DOMstrings.container).addEventListener('click', ctrlDeleteItem);
+        
+        document.querySelector(DOMstrings.inputType).addEventListener('change', budgetVw.changedType);
     
     };
     
@@ -233,6 +301,8 @@ var budgetController = (function(budgetMod, budgetVw) {
         budgetMod.calculatePercentages();
         var percentages = budgetMod.getPercentages();
         console.log(percentages); 
+        budgetVw.displayPercentages(percentages); 
+        
     }
     
     var ctrlAddItem = function() {
@@ -270,7 +340,8 @@ var budgetController = (function(budgetMod, budgetVw) {
         init: function() {
             console.log('Application has started'); 
             setupEventListeners(); 
-            updateBudget();  
+            updateBudget();
+            budgetVw.displayMonth();
         },
         
         testing: function() {
