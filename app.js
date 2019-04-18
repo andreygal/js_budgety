@@ -3,7 +3,18 @@ var budgetModel = (function() {
     var Expense = function(id, description, value) {
         this.id = id; 
         this.description = description; 
-        this.value = value; 
+        this.value = value;
+        this.percentage = -1; 
+    };
+    
+    Expense.prototype.calcPercentage = function(totalIncome) {
+        if (totalIncome > 0) {
+            this.percentage = Math.round((this.value / totalIncome) * 100)
+        }
+    };
+    
+    Expense.prototype.getPercentage = function(totalIncome) {
+        return this.percentage; 
     };
     
     var Income = function(id, description, value) {
@@ -79,6 +90,19 @@ var budgetModel = (function() {
         
         },
         
+        calculatePercentages: function() {
+            data.allItems.exp.forEach(function(cur) {
+                cur.calcPercentage(data.totals.inc); 
+            })
+        },
+        
+        getPercentages: function() {
+            var allPerc = data.allItems.exp.map(function(cur) {
+                return cur.getPercentage(); 
+            });
+            return allPerc; 
+        },
+        
         getBudget: function() {
             return {
                 budget:     data.budget,
@@ -121,8 +145,8 @@ var budgetView = (function() {
             //+ inc or - exp
             return {
                 type:         document.querySelector(DOMstrings.inputType).value,
-                description: document.querySelector(DOMstrings.inputDescription).value,
-                value:       parseFloat(document.querySelector(DOMstrings.inputValue).value)
+                description:  document.querySelector(DOMstrings.inputDescription).value,
+                value:        parseFloat(document.querySelector(DOMstrings.inputValue).value)
             };
         },
                 
@@ -149,8 +173,9 @@ var budgetView = (function() {
             
         },
         
-        deleteListItem: function() {
-            
+        deleteListItem: function(selectorID) {
+            var el = document.getElementById(selectorID);
+            el.parentNode.removeChild(el); 
         },
         
         clearFields: function() {
@@ -204,6 +229,12 @@ var budgetController = (function(budgetMod, budgetVw) {
         budgetView.displayBudget(budget); 
     };
     
+    var updatePercentages = function() {
+        budgetMod.calculatePercentages();
+        var percentages = budgetMod.getPercentages();
+        console.log(percentages); 
+    }
+    
     var ctrlAddItem = function() {
         var input = budgetVw.getInput(); 
         
@@ -213,6 +244,7 @@ var budgetController = (function(budgetMod, budgetVw) {
             budgetVw.clearFields(); 
             budgetMod.calculateBudget(input.type);
             updateBudget(); 
+            updatePercentages(); 
         }
         
     };
@@ -227,6 +259,10 @@ var budgetController = (function(budgetMod, budgetVw) {
             type = splitID[0].substr(0, 3);
             ID = parseInt(splitID[1]);
             budgetMod.deleteItem(type, ID); 
+            budgetVw.deleteListItem(itemID); 
+            budgetMod.calculateBudget(type);
+            updateBudget();
+            updatePercentages(); 
         }
     }
     
